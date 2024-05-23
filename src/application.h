@@ -7,7 +7,7 @@
 #include <limits>
 
 // render includes
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -20,10 +20,17 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+// font
+
+
+// project files
 #include "shader.h"
 #include "camera.h"
+#include "textmanager.h"
+#include "grid.h"
+#include "object.h"
 
-
+// experimental optional windows no border/transparent
 // #ifdef _WIN32
 // 	#define GLFW_EXPOSE_NATIVE_WIN32
 // 	#include <GLFW/glfw3native.h>
@@ -36,16 +43,22 @@ public:
 	int m_SCR_WIDTH{1440};
 	int m_SCR_HEIGHT{1080};
 	const float m_viewport_ratio{m_SCR_HEIGHT/static_cast<float>(m_SCR_WIDTH)};
-	int m_VIEW_WIDTH{m_SCR_WIDTH*m_viewport_ratio};
-	int m_VIEW_HEIGHT{m_SCR_HEIGHT};
+	int m_VIEW_WIDTH{static_cast<int>(m_SCR_WIDTH*m_viewport_ratio)};
+	int m_VIEW_HEIGHT{static_cast<int>(m_SCR_HEIGHT)};
 
 	ImGuiIO* m_ioptr{};
 
 	GLFWwindow* m_window{};
 
-	Shader m_shader{};
-	Shader m_circleShader{};
 	Shader m_gridShader{};
+	Shader m_textShader{};
+	Shader m_objShader{};
+
+	Object m_obj{};
+
+	TextManager m_textManager{};
+
+	Grid m_grid{m_VIEW_WIDTH, m_VIEW_HEIGHT, 25, 25};
 
 	bool mouseDragging{false};
 	double lastX{};
@@ -100,6 +113,10 @@ public:
 	double currentTime{};
 	double deltaTime{};
 	double totalTime{};
+	double frameTime{};
+	double startTime{};
+
+	void updateFrameTime();
 };
 
 static void framebuffer_size_callback(GLFWwindow*, int, int);

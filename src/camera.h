@@ -39,7 +39,6 @@ public:
 
 	void processMouseMovement(float xoffset, float yoffset);
 
-private:
 	void updateCameraVectors();
 };
 

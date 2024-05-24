@@ -16,9 +16,10 @@ public:
 	void generateText(std::string text, float x, float y, float scale);
 	void render();
 
+	glm::vec3 m_position{};
+	void loadFont(const char* fontPath);
 private:
 
-	void loadFont(const char* fontPath);
 	void createTextureAtlas();
 	void setupBuffers();
 
@@ -32,6 +33,7 @@ private:
 	unsigned int m_fontTexture{};
 	unsigned int m_VAO{};
 	unsigned int m_VBO{};
+
 
 	std::vector<float> m_vertices;
 

@@ -33,16 +33,18 @@ void Application::draw()
 	glClearColor(0.1,0.1,0.1,1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	// m_modelViewProjectionMatrix = glm::mat4{1.0f};
-	// m_view = m_camera.getViewMatrix();
-	// m_projection = glm::perspective(glm::radians(m_camera.m_fov), static_cast<float>(m_VIEW_WIDTH) / m_VIEW_HEIGHT, m_camera.m_nearPlane, m_camera.m_farPlane);
-	// m_projection = glm::ortho(-1.0f, +1.0f, -1.0f, +1.0f, 0.1f, 100.0f);
+	m_translate = glm::translate(glm::mat4{1.0f}, m_textManager.m_position);
 
-	// m_model = m_translate * m_scale * m_rotate;
-	// for (auto& m : m_modelViewProjectionComponents)
-	// {
-	// 	m_modelViewProjectionMatrix*=*m;
-	// }
+	m_modelViewProjectionMatrix = glm::mat4{1.0f};
+	m_view = m_camera.getViewMatrix();
+	// m_projection = glm::perspective(glm::radians(m_camera.m_fov), static_cast<float>(m_VIEW_WIDTH) / m_VIEW_HEIGHT, m_camera.m_nearPlane, m_camera.m_farPlane);
+	m_projection = glm::ortho(0.0f, static_cast<float>(m_VIEW_WIDTH), static_cast<float>(m_VIEW_HEIGHT), 0.0f, 0.1f, 100.0f);
+
+	m_model = m_translate * m_scale * m_rotate;
+	for (auto& m : m_modelViewProjectionComponents)
+	{
+		m_modelViewProjectionMatrix*=*m;
+	}
 
 	m_gridShader.use();
 	m_grid.draw();
@@ -53,7 +55,8 @@ void Application::draw()
 	updateFrameTime();
 
 	m_textShader.use();
-	m_textManager.generateText("Frame Time:"+std::to_string(frameTime)+"\nFPS:"+std::to_string(1.0/frameTime), 0.0f, 0.0f, 0.002f);
+	m_textShader.setMat4("mvpMatrix", m_modelViewProjectionMatrix);
+	m_textManager.generateText("Frame Time: "+std::to_string(frameTime*1000).substr(0,5)+"ms\nFPS: "+std::to_string(static_cast<int>(1.0/frameTime)), 0.0f, 0.0f, 1.0f);
 	m_textManager.render();
 
 
@@ -69,6 +72,25 @@ void Application::draw()
 		if (ImGui::Checkbox("VSync", &vsync))
 		{
 			glfwSwapInterval(vsync);
+		}
+		ImGui::Text("%f, %f, %f",lastX,lastY);
+		ImGui::DragFloat3("Translate", &m_textManager.m_position[0]);
+		for (auto& transformation : m_modelViewProjectionComponents)
+		{
+			if (ImGui::BeginTable("", 4))
+			{
+				for (int i{}; i < 4; i++)
+				{
+					ImGui::TableNextRow();
+					for (int j{}; j < 4; j++)
+					{
+						ImGui::TableSetColumnIndex(j);
+						ImGui::Text("%f", (*transformation)[j][i]);
+					}
+				}
+				ImGui::EndTable();
+			}
+			ImGui::NewLine();
 		}
 	}
 	ImGui::End();
@@ -168,11 +190,11 @@ void Application::init()
 	m_objShader = Shader("../src/object.vs", "../src/object.fs");
 	m_obj.init();
 
-	// m_modelViewProjectionComponents.push_back(&m_projection);
-	// m_modelViewProjectionComponents.push_back(&m_view);
-	// m_modelViewProjectionComponents.push_back(&m_translate);
-	// m_modelViewProjectionComponents.push_back(&m_scale);
-	// m_modelViewProjectionComponents.push_back(&m_rotate);
+	m_modelViewProjectionComponents.push_back(&m_projection);
+	m_modelViewProjectionComponents.push_back(&m_view);
+	m_modelViewProjectionComponents.push_back(&m_translate);
+	m_modelViewProjectionComponents.push_back(&m_scale);
+	m_modelViewProjectionComponents.push_back(&m_rotate);
 }
 
 
@@ -191,8 +213,10 @@ void Application::process_key(int key, int scancode, int action, int mods)
 			glfwSetWindowShouldClose(m_window, true);
 			close();
 		}
-		if (key == GLFW_KEY_DELETE)
+		if (key == GLFW_KEY_LEFT)
 		{
+			m_camera.m_yaw+=90.0f;
+			m_camera.updateCameraVectors();
 		}
 	}
 }
@@ -240,7 +264,6 @@ void Application::process_cursor_position(double xposIn, double yposIn)
 		lastX=xpos;
 		lastY=ypos;
 		updateMousePos3D();
-
 	}
 }
 
@@ -264,8 +287,9 @@ void Application::process_input()
 	{
 		// firstMouse=true;
 	}
-	if (glfwGetKey(m_window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS)
 	{
+		
 	}
 }
 

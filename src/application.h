@@ -40,9 +40,10 @@
 class Application
 {
 public:
-	int m_SCR_WIDTH{1440};
-	int m_SCR_HEIGHT{1080};
+	int m_SCR_WIDTH{1280};
+	int m_SCR_HEIGHT{720};
 	const float m_viewport_ratio{m_SCR_HEIGHT/static_cast<float>(m_SCR_WIDTH)};
+	// const float m_viewport_ratio{1};
 	int m_VIEW_WIDTH{static_cast<int>(m_SCR_WIDTH*m_viewport_ratio)};
 	int m_VIEW_HEIGHT{static_cast<int>(m_SCR_HEIGHT)};
 

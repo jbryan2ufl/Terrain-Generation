@@ -122,8 +122,10 @@ void TextManager::generateText(std::string text, float x, float y, float scale)
 				stbtt_aligned_quad q;
 				stbtt_GetBakedQuad(&charData[0], atlasWidth, atlasHeight, c - 32, &x, &y, &q, 1);
 
-				float y0 = (1.0f - q.y0) * scale;
-				float y1 = (1.0f - q.y1) * scale;
+				float y0 = q.y0 * scale;
+				float y1 = q.y1 * scale;
+				// float y0 = (1.0f - q.y0) * scale;
+				// float y1 = (1.0f - q.y1) * scale;
 
 				float x0 = q.x0 * scale;
 				float x1 = q.x1 * scale;

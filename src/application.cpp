@@ -49,16 +49,19 @@ void Application::draw()
 	m_gridShader.use();
 	m_grid.draw();
 
-	// m_objShader.use();
-	// m_obj.render();
+	m_objShader.use();
+	m_obj.render();
 
 	updateFrameTime();
 
+	std::string frameTimeString{"Frame Time: "+std::to_string(frameTime*1000).substr(0,5)+"ms\n"};
+	std::string fpsString{"FPS: "+std::to_string(static_cast<int>(1.0/frameTime))+'\n'};
+	std::string mousePosString{"X:"+std::to_string(static_cast<int>(lastX))+" Y:"+std::to_string(static_cast<int>(lastY))};
+
+	m_textManager.generateText(frameTimeString+fpsString+mousePosString);
 	m_textShader.use();
 	m_textShader.setMat4("mvpMatrix", m_modelViewProjectionMatrix);
-	m_textManager.generateText("Frame Time: "+std::to_string(frameTime*1000).substr(0,5)+"ms\nFPS: "+std::to_string(static_cast<int>(1.0/frameTime)), 0.0f, 0.0f, 1.0f);
 	m_textManager.render();
-
 
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -73,8 +76,6 @@ void Application::draw()
 		{
 			glfwSwapInterval(vsync);
 		}
-		ImGui::Text("%f, %f, %f",lastX,lastY);
-		ImGui::DragFloat3("Translate", &m_textManager.m_position[0]);
 		for (auto& transformation : m_modelViewProjectionComponents)
 		{
 			if (ImGui::BeginTable("", 4))
@@ -113,7 +114,7 @@ void Application::init()
 	// glfwWindowHint(GLFW_SAMPLES, 8);
 
 	// glfw window creation
-	m_window = glfwCreateWindow(m_SCR_WIDTH, m_SCR_HEIGHT, "Curve Design", NULL, NULL);
+	m_window = glfwCreateWindow(m_SCR_WIDTH, m_SCR_HEIGHT, "3D Template", NULL, NULL);
 
 	// check if window is created
 	if (m_window == NULL)
@@ -185,7 +186,7 @@ void Application::init()
 	m_grid.populate();
 
 	m_textShader = Shader("../src/text.vs", "../src/text.fs");
-	m_textManager.init("../fonts/slkscr.ttf", 48);
+	m_textManager.init("../fonts/slkscr.ttf", 18.0f, glm::vec3{m_VIEW_WIDTH, 0.0f, 0.0f});
 
 	m_objShader = Shader("../src/object.vs", "../src/object.fs");
 	m_obj.init();
@@ -290,6 +291,11 @@ void Application::process_input()
 	if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS)
 	{
 		
+	}
+
+	if (mouseDragging)
+	{
+
 	}
 }
 

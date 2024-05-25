@@ -1,6 +1,7 @@
 #include "textmanager.h"
 
-TextManager::TextManager()
+TextManager::TextManager(glm::vec2 windowSize)
+	: m_windowSize{windowSize}
 {
 }
 
@@ -26,32 +27,27 @@ void TextManager::loadFont(const char* fontPath)
 void TextManager::createTextureAtlas()
 {
 	unsigned char* bitmap = new unsigned char[atlasWidth * atlasHeight];
-	stbtt_BakeFontBitmap(fontBuffer, 0, 32.0, bitmap, atlasWidth, atlasHeight, 32, 96, &charData[0]);
+	stbtt_BakeFontBitmap(fontBuffer, 0, m_fontSize, bitmap, atlasWidth, atlasHeight, 32, 96, &charData[0]);
 
 	glGenTextures(1, &textureAtlas);
 	glBindTexture(GL_TEXTURE_2D, textureAtlas);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, atlasWidth, atlasHeight, 0, GL_RED, GL_UNSIGNED_BYTE, bitmap);
 
-	// Check for OpenGL errors
 	GLenum error = glGetError();
 	if (error != GL_NO_ERROR) {
 		std::cerr << "glTexImage2D error: " << error << std::endl;
 	}
 
-	// Generate mipmaps for the texture
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-	// Check for OpenGL errors
 	error = glGetError();
 	if (error != GL_NO_ERROR) {
 		std::cerr << "glGenerateMipmap error: " << error << std::endl;
 	}
 
-	// Set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	// Check for OpenGL errors
 	error = glGetError();
 	if (error != GL_NO_ERROR) {
 		std::cerr << "glTexParameteri error: " << error << std::endl;
@@ -89,11 +85,13 @@ std::vector<std::string> TextManager::splitTextIntoLines(const std::string& text
 	return lines;
 }
 
-void TextManager::init(const char* fontPath, float fontSize)
+void TextManager::init(const char* fontPath, float fontSize, glm::vec3 position)
 {
+	m_position = position;
+	m_fontSize = fontSize;
 	loadFont(fontPath);
 	createTextureAtlas();
-	setupBuffers(); 
+	setupBuffers();
 }
 
 TextManager::~TextManager()
@@ -102,51 +100,180 @@ TextManager::~TextManager()
 	glDeleteBuffers(1, &m_VBO);
 }
 
-void TextManager::generateText(std::string text, float x, float y, float scale)
+void TextManager::calculateFullTextSize(const std::vector<std::string> lines)
 {
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, textureAtlas);
-	glBindVertexArray(m_VAO);
+	m_textMetrics.fullTextWidth = 0.0f;
+	m_textMetrics.maxCharHeight = 0.0f;
 
-	m_vertices.clear();
-
-	float startX = x;
-	float startY = y;
-	float lineHeight = 32.0f;  // Adjust line height as necessary
-
-	auto lines = splitTextIntoLines(text);
-	for (const auto& line : lines) {
-		x = startX;
+	for (const auto& line : lines)
+	{
+		float lineWidth = getLineWidth(line);
+		if (lineWidth > m_textMetrics.fullTextWidth)
+		{
+			m_textMetrics.fullTextWidth = lineWidth;
+		}
+		float lineHeight = 0.0f;
+		float x = 0.0f;
+		float y = 0.0f;
 		for (char c : line) {
 			if (c >= 32 && c < 128) {
 				stbtt_aligned_quad q;
 				stbtt_GetBakedQuad(&charData[0], atlasWidth, atlasHeight, c - 32, &x, &y, &q, 1);
+				float charHeight = q.y1 - q.y0;
+				lineHeight = std::max(lineHeight, charHeight);
+			}
+		}
+		m_textMetrics.maxCharHeight = std::max(m_textMetrics.maxCharHeight, lineHeight);
+	}
+	m_textMetrics.fullTextHeight = lines.size() * m_textMetrics.maxCharHeight;
+}
 
-				float y0 = q.y0 * scale;
-				float y1 = q.y1 * scale;
-				// float y0 = (1.0f - q.y0) * scale;
-				// float y1 = (1.0f - q.y1) * scale;
+float TextManager::getLineWidth(const std::string line)
+{
+	float x = 0.0f;
+	float y = 0.0f;
+	float startX = x; // Initial x position
+	stbtt_aligned_quad q;
 
-				float x0 = q.x0 * scale;
-				float x1 = q.x1 * scale;
+	for (char c : line) {
+		if (c >= 32 && c < 128) {
+			stbtt_GetBakedQuad(&charData[0], atlasWidth, atlasHeight, c - 32, &x, &y, &q, 1);
+		}
+	}
+	
+	float lineWidth = x - startX; // Calculate line width based on updated x position
+	return lineWidth;
+}
+
+void TextManager::generateText(std::string text)
+{
+	m_vertices.clear();
+
+	auto lines = splitTextIntoLines(text);
+	calculateFullTextSize(lines);
+	float x{}, y{};
+	float lineHeight = m_textMetrics.maxCharHeight + 5.0f;
+	float startX{};
+
+	for (const auto& line : lines)
+	{
+		switch (m_justification)
+		{
+			case TextJustification::Left:
+				startX = 0.0f;
+				break;
+			case TextJustification::Center:
+				startX = (m_textMetrics.fullTextWidth - getLineWidth(line)) / 2.0f;
+				break;
+			case TextJustification::Right:
+				startX = m_textMetrics.fullTextWidth - getLineWidth(line);
+				break;
+			default:
+				startX = 0.0f;
+				break;
+		}
+		x = startX;
+		for (char c : line)
+		{
+			if (c >= 32 && c < 128)
+			{
+				stbtt_aligned_quad q;
+				stbtt_GetBakedQuad(&charData[0], atlasWidth, atlasHeight, c - 32, &x, &y, &q, 1);
+
+				float x0, x1, y0, y1;
+
+				// Calculate texture & coordinates based on anchor point
+				switch (m_anchor)
+				{
+					case TextAnchor::TopLeft:
+						x0 = q.x0;
+						x1 = q.x1;
+						y0 = q.y0 + m_textMetrics.maxCharHeight;
+						y1 = q.y1 + m_textMetrics.maxCharHeight;
+						break;
+					case TextAnchor::CenterLeft:
+						x0 = q.x0;
+						x1 = q.x1;
+						y0 = q.y0;
+						y1 = q.y1;
+						break;
+					case TextAnchor::BottomLeft:
+						x0 = q.x0;
+						x1 = q.x1;
+						y0 = q.y0 - lineHeight * (lines.size()-1);
+						y1 = q.y1 - lineHeight * (lines.size()-1);
+						break;
+					case TextAnchor::TopCenter:
+						x0 = q.x0 - (m_textMetrics.fullTextWidth / 2.0f);
+						x1 = q.x1 - (m_textMetrics.fullTextWidth / 2.0f);
+						y0 = q.y0 + m_textMetrics.maxCharHeight;
+						y1 = q.y1 + m_textMetrics.maxCharHeight;
+						break;
+					case TextAnchor::Center:
+						x0 = q.x0 - (m_textMetrics.fullTextWidth / 2.0f);
+						x1 = q.x1 - (m_textMetrics.fullTextWidth / 2.0f);
+						y0 = q.y0;
+						y1 = q.y1;
+						break;
+					case TextAnchor::BottomCenter:
+						x0 = q.x0 - (m_textMetrics.fullTextWidth / 2.0f);
+						x1 = q.x1 - (m_textMetrics.fullTextWidth / 2.0f);
+						y0 = q.y0;
+						y1 = q.y1;
+						break;
+					case TextAnchor::TopRight:
+						x0 = q.x0 - m_textMetrics.fullTextWidth;
+						x1 = q.x1 - m_textMetrics.fullTextWidth;
+						y0 = q.y0 + m_textMetrics.maxCharHeight;
+						y1 = q.y1 + m_textMetrics.maxCharHeight;
+						break;
+					case TextAnchor::CenterRight:
+						x0 = q.x0 - m_textMetrics.fullTextWidth;
+						x1 = q.x1 - m_textMetrics.fullTextWidth;
+						y0 = q.y0;
+						y1 = q.y1;
+						break;
+					case TextAnchor::BottomRight:
+						x0 = q.x0 - m_textMetrics.fullTextWidth;
+						x1 = q.x1 - m_textMetrics.fullTextWidth;
+						y0 = q.y0;
+						y1 = q.y1;
+						break;
+					default:
+						x0 = q.x0 - (m_textMetrics.fullTextWidth / 2.0f);
+						x1 = q.x1 - (m_textMetrics.fullTextWidth / 2.0f);
+						y0 = q.y0;
+						y1 = q.y1;
+						break;
+				}
+
+				float t0 = q.t0;
+				float t1 = q.t1;
+
+				float s0 = q.s0;
+				float s1 = q.s1;
 
 				m_vertices.insert(m_vertices.end(), {
-					x0, y0, q.s0, q.t0,
-					x1, y0, q.s1, q.t0,
-					x1, y1, q.s1, q.t1,
+					x0, y0, s0, t0,
+					x1, y0, s1, t0,
+					x1, y1, s1, t1,
 
-					x0, y0, q.s0, q.t0,
-					x1, y1, q.s1, q.t1,
-					x0, y1, q.s0, q.t1
+					x0, y0, s0, t0,
+					x1, y1, s1, t1,
+					x0, y1, s0, t1
 				});
 			}
 		}
-		y += lineHeight;  // Move to the next line
+		y += lineHeight;
 	}
 }
 
 void TextManager::render()
 {
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textureAtlas);
+	glBindVertexArray(m_VAO);
+
 	glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
 	glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(float), m_vertices.data(), GL_DYNAMIC_DRAW);
 

@@ -57,7 +57,7 @@ public:
 
 	Object m_obj{};
 
-	TextManager m_textManager{};
+	TextManager m_textManager{glm::vec2{m_VIEW_WIDTH, m_VIEW_HEIGHT}};
 
 	Grid m_grid{m_VIEW_WIDTH, m_VIEW_HEIGHT, 25, 25};
 

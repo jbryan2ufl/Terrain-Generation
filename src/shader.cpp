@@ -1,7 +1,5 @@
 #include "shader.h"
 
-// code from https://learnopengl.com/Getting-started/Shaders
-
 Shader::Shader(const char* vertexPath, const char* fragmentPath)
 {
 	ID=glCreateProgram();

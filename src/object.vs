@@ -5,8 +5,10 @@ layout (location = 1) in vec4 aColor;
 
 out vec4 color;
 
+uniform mat4 mvpMatrix;
+
 void main()
 {
 	color=aColor;
-	gl_Position = aPos;
+	gl_Position = mvpMatrix * aPos;
 }

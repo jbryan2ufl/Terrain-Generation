@@ -8,6 +8,11 @@
 #include <array>
 #include <iostream>
 #include <limits>
+#include <memory>
+
+#include "shader.h"
+#include "windowData.h"
+#include "modelMatrix.h"
 
 class Object
 {
@@ -21,9 +26,15 @@ public:
 
 	glm::vec4 m_color{1, 1, 1, 1};
 
+	Shader m_shader{};
+
+	std::shared_ptr<WindowData> m_windowData{};
+
+	ModelMatrix m_modelMatrix{};
+
 	Object();
 
-	void init();
+	void init(std::shared_ptr<WindowData> w);
 	
 	void render();
 

@@ -5,6 +5,9 @@
 #include <vector>
 #include <string>
 #include <limits>
+#include <cmath>
+#include <numbers>
+#include <memory>
 
 // render includes
 #include <glad/glad.h>
@@ -29,6 +32,7 @@
 #include "textmanager.h"
 #include "grid.h"
 #include "object.h"
+#include "windowData.h"
 
 // experimental optional windows no border/transparent
 // #ifdef _WIN32
@@ -40,26 +44,19 @@
 class Application
 {
 public:
-	int m_SCR_WIDTH{1280};
-	int m_SCR_HEIGHT{720};
-	const float m_viewport_ratio{m_SCR_HEIGHT/static_cast<float>(m_SCR_WIDTH)};
-	// const float m_viewport_ratio{1};
-	int m_VIEW_WIDTH{static_cast<int>(m_SCR_WIDTH*m_viewport_ratio)};
-	int m_VIEW_HEIGHT{static_cast<int>(m_SCR_HEIGHT)};
+	std::shared_ptr<WindowData> m_windowData{std::make_shared<WindowData>()};
 
 	ImGuiIO* m_ioptr{};
 
 	GLFWwindow* m_window{};
 
 	Shader m_gridShader{};
-	Shader m_textShader{};
-	Shader m_objShader{};
-
 	Object m_obj{};
 
-	TextManager m_textManager{glm::vec2{m_VIEW_WIDTH, m_VIEW_HEIGHT}};
+	TextManager m_fpsText{};
+	TextManager m_worldText{};
 
-	Grid m_grid{m_VIEW_WIDTH, m_VIEW_HEIGHT, 25, 25};
+	Grid m_grid{m_windowData->m_windowSize.x, m_windowData->m_windowSize.y, 25, 25};
 
 	bool mouseDragging{false};
 	double lastX{};
@@ -75,15 +72,6 @@ public:
 	void process_input();
 
 	Camera m_camera{};
-
-	glm::mat4 m_modelViewProjectionMatrix{1.0};
-	glm::mat4 m_projection{1.0};
-	glm::mat4 m_view{1.0};
-	glm::mat4 m_model{1.0};
-	glm::mat4 m_translate{1.0};
-	glm::mat4 m_rotate{1.0};
-	glm::mat4 m_scale{1.0};
-	std::vector<glm::mat4*> m_modelViewProjectionComponents{};
 
 	glm::vec2 normalizePoint(double x, double y);
 	void updateMousePos3D();

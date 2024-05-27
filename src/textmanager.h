@@ -1,9 +1,11 @@
 #pragma once
 
 #include "imstb_truetype.h"
-
 #include <unordered_map>
+#include <memory>
 #include "shader.h"
+#include "modelMatrix.h"
+#include "windowData.h"
 
 enum class TextAnchor
 {
@@ -25,20 +27,37 @@ enum class TextJustification
 	Right
 };
 
-class TextManager {
-public:
-	TextManager(glm::vec2 windowSize);
+enum class TextViewingMode
+{
+	Orthographic,
+	Perspective
+};
 
-	void init(const char* fontPath, float fontSize, glm::vec3 position);
+class TextManager
+{
+public:
+	TextManager();
+
+	void init(std::shared_ptr<WindowData> w, const char* fontPath, float fontSize, glm::vec3 position, const char* vs, const char* fs, TextViewingMode v, TextAnchor a, TextJustification j);
 
 	~TextManager();
-	
+
 	void generateText(std::string text);
 	void render();
 
-	glm::vec3 m_position{};
 	void loadFont(const char* fontPath);
+	ModelMatrix m_modelMatrix{};
+
+	void setJustification(TextJustification j);
+	void setAnchor(TextAnchor a);
+
 private:
+
+	std::shared_ptr<WindowData> m_windowData{};
+
+	std::string m_text{};
+
+	TextViewingMode m_viewMode{TextViewingMode::Orthographic};
 
 	struct TextMetrics
 	{
@@ -62,17 +81,15 @@ private:
 	unsigned int m_VBO{};
 
 	TextMetrics m_textMetrics{};
+	Shader m_shader{};
 
-	glm::vec2 m_windowSize{};
-
-	TextAnchor m_anchor{TextAnchor::TopRight};
-	TextJustification m_justification{TextJustification::Right};
+	TextAnchor m_anchor{TextAnchor::Center};
+	TextJustification m_justification{TextJustification::Center};
 
 	void calculateFullTextSize(const std::vector<std::string> lines);
 	float getLineWidth(const std::string line);
 
 	float m_fontSize{};
-
 
 	std::vector<float> m_vertices;
 

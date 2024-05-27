@@ -28,8 +28,8 @@ public:
 	float m_mouseSensitivity{0.1f};
 	float m_fov{60.0f};
 
-	float m_nearPlane{0.1};
-	float m_farPlane{100};
+	float m_nearPlane{0.001f};
+	float m_farPlane{1000.0f};
 
 	Camera();
 

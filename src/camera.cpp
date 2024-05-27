@@ -61,8 +61,7 @@ void Camera::processMouseMovement(float xoffset, float yoffset)
 	updateCameraVectors();
 }
 
-void Camera::updateCameraVectors()
-{
+void Camera::updateCameraVectors() {
 	m_front = glm::normalize(glm::vec3{
 		cos(glm::radians(m_yaw)) * cos(glm::radians(m_pitch)),
 		sin(glm::radians(m_pitch)),
@@ -70,5 +69,6 @@ void Camera::updateCameraVectors()
 	});
 
 	m_right = glm::normalize(glm::cross(m_front, m_worldUp));
+
 	m_up = glm::normalize(glm::cross(m_right, m_front));
 }

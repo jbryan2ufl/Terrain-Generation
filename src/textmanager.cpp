@@ -1,8 +1,22 @@
 #include "textmanager.h"
 
-TextManager::TextManager(glm::vec2 windowSize)
-	: m_windowSize{windowSize}
+TextManager::TextManager()
 {
+}
+
+void TextManager::init(std::shared_ptr<WindowData> w, const char* fontPath, float fontSize, glm::vec3 position, const char* vs, const char* fs, TextViewingMode v, TextAnchor a, TextJustification j)
+{
+	m_viewMode = v;
+	m_anchor = a;
+	m_justification = j;
+	m_shader = Shader(vs, fs);
+	m_windowData = w;
+	m_modelMatrix.m_position = position;
+	m_modelMatrix.updateAll();
+	m_fontSize = fontSize;
+	loadFont(fontPath);
+	createTextureAtlas();
+	setupBuffers();
 }
 
 void TextManager::loadFont(const char* fontPath)
@@ -85,15 +99,6 @@ std::vector<std::string> TextManager::splitTextIntoLines(const std::string& text
 	return lines;
 }
 
-void TextManager::init(const char* fontPath, float fontSize, glm::vec3 position)
-{
-	m_position = position;
-	m_fontSize = fontSize;
-	loadFont(fontPath);
-	createTextureAtlas();
-	setupBuffers();
-}
-
 TextManager::~TextManager()
 {
 	glDeleteVertexArrays(1, &m_VAO);
@@ -132,7 +137,7 @@ float TextManager::getLineWidth(const std::string line)
 {
 	float x = 0.0f;
 	float y = 0.0f;
-	float startX = x; // Initial x position
+	float startX = x;
 	stbtt_aligned_quad q;
 
 	for (char c : line) {
@@ -141,12 +146,14 @@ float TextManager::getLineWidth(const std::string line)
 		}
 	}
 	
-	float lineWidth = x - startX; // Calculate line width based on updated x position
+	float lineWidth = x - startX;
 	return lineWidth;
 }
 
 void TextManager::generateText(std::string text)
 {
+	m_text = text;
+
 	m_vertices.clear();
 
 	auto lines = splitTextIntoLines(text);
@@ -206,20 +213,20 @@ void TextManager::generateText(std::string text)
 					case TextAnchor::TopCenter:
 						x0 = q.x0 - (m_textMetrics.fullTextWidth / 2.0f);
 						x1 = q.x1 - (m_textMetrics.fullTextWidth / 2.0f);
-						y0 = q.y0 + m_textMetrics.maxCharHeight;
-						y1 = q.y1 + m_textMetrics.maxCharHeight;
+						y0 = q.y0 + (m_textMetrics.maxCharHeight / 2.0f);
+						y1 = q.y1 + (m_textMetrics.maxCharHeight / 2.0f);
 						break;
 					case TextAnchor::Center:
 						x0 = q.x0 - (m_textMetrics.fullTextWidth / 2.0f);
 						x1 = q.x1 - (m_textMetrics.fullTextWidth / 2.0f);
-						y0 = q.y0;
-						y1 = q.y1;
+						y0 = q.y0 + (m_textMetrics.maxCharHeight / 2.0f);
+						y1 = q.y1 + (m_textMetrics.maxCharHeight / 2.0f);
 						break;
 					case TextAnchor::BottomCenter:
 						x0 = q.x0 - (m_textMetrics.fullTextWidth / 2.0f);
 						x1 = q.x1 - (m_textMetrics.fullTextWidth / 2.0f);
-						y0 = q.y0;
-						y1 = q.y1;
+						y0 = q.y0 + (m_textMetrics.maxCharHeight / 2.0f);
+						y1 = q.y1 + (m_textMetrics.maxCharHeight / 2.0f);
 						break;
 					case TextAnchor::TopRight:
 						x0 = q.x0 - m_textMetrics.fullTextWidth;
@@ -253,6 +260,18 @@ void TextManager::generateText(std::string text)
 				float s0 = q.s0;
 				float s1 = q.s1;
 
+				if (m_viewMode == TextViewingMode::Perspective)
+				{
+					m_modelMatrix.m_scaleFactor = 0.01f;
+					m_modelMatrix.updateAll();
+					float scaleFactor{0.01f};
+					// x0*=scaleFactor;
+					// x1*=scaleFactor;
+					// y0*=scaleFactor;
+					// y1*=scaleFactor;
+					std::swap(t0, t1);
+				}
+
 				m_vertices.insert(m_vertices.end(), {
 					x0, y0, s0, t0,
 					x1, y0, s1, t0,
@@ -270,6 +289,18 @@ void TextManager::generateText(std::string text)
 
 void TextManager::render()
 {
+	m_shader.use();
+	glm::mat4 mvpMatrix {};
+	if (m_viewMode == TextViewingMode::Orthographic)
+	{
+		mvpMatrix = m_windowData->m_orthographic * glm::mat4{1.0f} * m_modelMatrix.m_matrix;
+	}
+	else if (m_viewMode == TextViewingMode::Perspective)
+	{
+		mvpMatrix = m_windowData->m_perspective * m_windowData->m_view * m_modelMatrix.m_matrix;
+	}
+	m_shader.setMat4("mvpMatrix", mvpMatrix);
+
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureAtlas);
 	glBindVertexArray(m_VAO);
@@ -282,4 +313,16 @@ void TextManager::render()
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glUseProgram(0);
+}
+
+void TextManager::setJustification(TextJustification j)
+{
+	m_justification = j;
+	generateText(m_text);
+}
+
+void TextManager::setAnchor(TextAnchor a)
+{
+	m_anchor = a;
+	generateText(m_text);
 }

@@ -4,15 +4,28 @@ Object::Object()
 {
 }
 
-void Object::init()
+void Object::init(std::shared_ptr<WindowData> w)
 {
 
+	m_windowData = w;
+
+	m_shader = Shader("../src/object.vs", "../src/object.fs");
+
 	m_data.push_back(glm::vec3{-0.5f, -0.5f, 0.0f});
-	m_color_data.push_back(m_color);
 	m_data.push_back(glm::vec3{0.5f, -0.5f, 0.0f});
-	m_color_data.push_back(m_color);
 	m_data.push_back(glm::vec3{-0.5f, 0.5f, 0.0f});
 	m_color_data.push_back(m_color);
+	m_color_data.push_back(m_color);
+	m_color_data.push_back(m_color);
+
+	// for (auto& i : m_data)
+	// {
+	// 	glm::mat4 mvpMatrix {m_windowData->m_projection * m_windowData->m_view * m_modelMatrix.m_matrix};
+	// 	glm::vec4 pos{i.x, i.y, 0.0f, 1.0f};
+	// 	glm::vec4 finalPos{mvpMatrix * pos};
+
+	// 	std::cout << finalPos.x << ' ' << finalPos.y << ' ' << finalPos.z << '\n';
+	// }
 
 	glGenBuffers(1, &m_VBO);
 	glGenBuffers(1, &m_colorVBO);
@@ -31,9 +44,13 @@ void Object::init()
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glEnableVertexAttribArray(0);
 }
-	
+
 void Object::render()
 {
+	m_shader.use();
+	glm::mat4 mvpMatrix {m_windowData->m_perspective * m_windowData->m_view * m_modelMatrix.m_matrix};
+	m_shader.setMat4("mvpMatrix", mvpMatrix);
+
 	glBindVertexArray(m_VAO);
 	glDrawArrays(GL_TRIANGLE_FAN, 0, m_data.size());
 	glBindVertexArray(0);

@@ -1,28 +1,35 @@
 #include "textmanager.h"
 
 TextManager::TextManager()
+	: Renderable{}
 {
 }
 
-void TextManager::init(std::shared_ptr<WindowData> w, const char* fontPath, float fontSize, glm::vec3 position, const char* vs, const char* fs, TextViewingMode v, TextAnchor a, TextJustification j)
+void TextManager::initFont(const char* fontPath, float fontSize)
+{
+	m_fontSize = fontSize;
+	loadFont(fontPath);
+	createTextureAtlas();
+}
+
+void TextManager::initTextProperties(glm::vec3 position, TextViewingMode v, TextAnchor a, TextJustification j)
 {
 	m_viewMode = v;
 	m_anchor = a;
 	m_justification = j;
-	m_shader = Shader(vs, fs);
-	m_windowData = w;
+	if (m_viewMode == TextViewingMode::Perspective)
+	{
+		m_modelMatrix.m_scaleFactor = 0.01f;
+	}
 	m_modelMatrix.m_position = position;
 	m_modelMatrix.updateAll();
-	m_fontSize = fontSize;
-	loadFont(fontPath);
-	createTextureAtlas();
-	setupBuffers();
 }
 
 void TextManager::loadFont(const char* fontPath)
 {
 	FILE* fontFile = fopen(fontPath, "rb");
-	if (!fontFile) {
+	if (!fontFile)
+	{
 		std::cerr << "Could not open font file: " << fontPath << std::endl;
 		return;
 	}
@@ -40,6 +47,11 @@ void TextManager::loadFont(const char* fontPath)
 
 void TextManager::createTextureAtlas()
 {
+	GLenum error = glGetError();
+	if (error != GL_NO_ERROR) {
+		std::cerr << "Error before Texture Atlas: " << error << std::endl;
+	}
+
 	unsigned char* bitmap = new unsigned char[atlasWidth * atlasHeight];
 	stbtt_BakeFontBitmap(fontBuffer, 0, m_fontSize, bitmap, atlasWidth, atlasHeight, 32, 96, &charData[0]);
 
@@ -47,7 +59,7 @@ void TextManager::createTextureAtlas()
 	glBindTexture(GL_TEXTURE_2D, textureAtlas);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, atlasWidth, atlasHeight, 0, GL_RED, GL_UNSIGNED_BYTE, bitmap);
 
-	GLenum error = glGetError();
+	error = glGetError();
 	if (error != GL_NO_ERROR) {
 		std::cerr << "glTexImage2D error: " << error << std::endl;
 	}
@@ -70,16 +82,19 @@ void TextManager::createTextureAtlas()
 	delete[] bitmap;
 }
 
-void TextManager::setupBuffers()
+void TextManager::init(std::shared_ptr<WindowData> w)
 {
-	glGenVertexArrays(1, &m_VAO);
-	glGenBuffers(1, &m_VBO);
+	m_windowData = w;
+	setupBuffers(2);
+	populateVAO();
+}
 
+void TextManager::populateVAO()
+{
 	glBindVertexArray(m_VAO);
 
-	glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, m_VBOs[0]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, nullptr, GL_DYNAMIC_DRAW);
-
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
@@ -97,12 +112,6 @@ std::vector<std::string> TextManager::splitTextIntoLines(const std::string& text
 		lines.push_back(line);
 	}
 	return lines;
-}
-
-TextManager::~TextManager()
-{
-	glDeleteVertexArrays(1, &m_VAO);
-	glDeleteBuffers(1, &m_VBO);
 }
 
 void TextManager::calculateFullTextSize(const std::vector<std::string> lines)
@@ -150,14 +159,19 @@ float TextManager::getLineWidth(const std::string line)
 	return lineWidth;
 }
 
-void TextManager::generateText(std::string text)
+void TextManager::initGeometry()
 {
-	m_text = text;
+	// if (m_text.empty())
+	// {
+	// 	return;
+	// }
 
 	m_vertices.clear();
 
-	auto lines = splitTextIntoLines(text);
+	auto lines = splitTextIntoLines(m_text);
 	calculateFullTextSize(lines);
+	glm::vec4 sizeWorld{m_modelMatrix.m_matrix * glm::vec4{m_textMetrics.fullTextWidth, m_textMetrics.fullTextHeight, 0.0f, 1.0f}};
+	setBoundingBox(glm::vec3{0.0f, 0.0f, -0.025f}, glm::vec3{sizeWorld.x, sizeWorld.y, 0.025f});
 	float x{}, y{};
 	float lineHeight = m_textMetrics.maxCharHeight + 5.0f;
 	float startX{};
@@ -264,12 +278,8 @@ void TextManager::generateText(std::string text)
 				{
 					m_modelMatrix.m_scaleFactor = 0.01f;
 					m_modelMatrix.updateAll();
-					float scaleFactor{0.01f};
-					// x0*=scaleFactor;
-					// x1*=scaleFactor;
-					// y0*=scaleFactor;
-					// y1*=scaleFactor;
-					std::swap(t0, t1);
+					y0=-y0;
+					y1=-y1;
 				}
 
 				m_vertices.insert(m_vertices.end(), {
@@ -285,12 +295,20 @@ void TextManager::generateText(std::string text)
 		}
 		y += lineHeight;
 	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, m_VBOs[0]);
+	glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(float), m_vertices.data(), GL_DYNAMIC_DRAW);
 }
 
-void TextManager::render()
+void TextManager::generateText(std::string text)
 {
-	m_shader.use();
-	glm::mat4 mvpMatrix {};
+	m_text = text;
+	initGeometry();
+}
+
+void TextManager::setUniforms()
+{
+	glm::mat4 mvpMatrix {1.0f};
 	if (m_viewMode == TextViewingMode::Orthographic)
 	{
 		mvpMatrix = m_windowData->m_orthographic * glm::mat4{1.0f} * m_modelMatrix.m_matrix;
@@ -299,20 +317,17 @@ void TextManager::render()
 	{
 		mvpMatrix = m_windowData->m_perspective * m_windowData->m_view * m_modelMatrix.m_matrix;
 	}
-	m_shader.setMat4("mvpMatrix", mvpMatrix);
+	m_shader->setMat4("mvpMatrix", mvpMatrix);
+}
 
+void TextManager::renderSpecifics()
+{
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureAtlas);
-	glBindVertexArray(m_VAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-	glBufferData(GL_ARRAY_BUFFER, m_vertices.size() * sizeof(float), m_vertices.data(), GL_DYNAMIC_DRAW);
 
 	glDrawArrays(GL_TRIANGLES, 0, m_vertices.size() / 4);
 
-	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	glUseProgram(0);
 }
 
 void TextManager::setJustification(TextJustification j)
@@ -325,4 +340,9 @@ void TextManager::setAnchor(TextAnchor a)
 {
 	m_anchor = a;
 	generateText(m_text);
+}
+
+TextManager::~TextManager()
+{
+	delete[] fontBuffer;
 }

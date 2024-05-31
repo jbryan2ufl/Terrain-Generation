@@ -38,18 +38,25 @@ void Application::draw()
 	// m_gridShader.use();
 	// m_grid.draw();
 
-	// m_obj.render();
-
 	updateFrameTime();
 
 	std::string frameTimeString{"Frame Time: "+std::to_string(frameTime*1000).substr(0,5)+"ms\n"};
 	std::string fpsString{"FPS: "+std::to_string(static_cast<int>(1.0/frameTime))+'\n'};
-	std::string mousePosString{"X:"+std::to_string(static_cast<int>(lastX))+" Y:"+std::to_string(static_cast<int>(lastY))};
+
+	std::string mousePosString{"X:"+std::to_string(m_mousePos.x)+" Y:"+std::to_string(m_mousePos.y)};
+
+	
+	// OBJECT RENDERING
+	m_obj.render();
+	m_crosshair.render();
+
+	m_collision = m_worldText.checkIntersection(m_camera.m_ray);
+
+	// TEXT RENDERING
+	m_worldText.render();
 
 	m_fpsText.generateText(frameTimeString+fpsString+mousePosString);
 	m_fpsText.render();
-
-	m_worldText.render();
 
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -81,14 +88,40 @@ void Application::draw()
 		{
 			m_worldText.m_modelMatrix.updateAll();
 		}
-		if (ImGui::DragFloat("Near Plane", &m_camera.m_nearPlane, 0.0001f) ||
-			ImGui::DragFloat("Far Plane", &m_camera.m_farPlane, 100.0f) ||
-			ImGui::DragFloat("FOV", &m_camera.m_fov, 1.0f) ||
-			ImGui::DragFloat3("Camera Position", &m_camera.m_position[0]))
+
+		
+		bool m_nearPlane{ImGui::DragFloat("Near Plane", &m_camera.m_nearPlane, 0.0001f)};
+		bool m_farPlane{ImGui::DragFloat("Far Plane", &m_camera.m_farPlane, 100.0f)};
+		bool m_fov{ImGui::DragFloat("FOV", &m_camera.m_fov, 1.0f)};
+		bool m_pos{ImGui::DragFloat3("Camera Position", &m_camera.m_position[0])};
+
+		if (m_nearPlane || m_farPlane || m_fov || m_pos)
 		{
 			m_camera.updateCameraVectors();
 			m_windowData->m_perspective = glm::perspective(glm::radians(m_camera.m_fov), m_windowData->m_aspectRatio, m_camera.m_nearPlane, m_camera.m_farPlane);
 		}
+
+		static glm::vec3 vec{};
+		vec = m_worldText.m_boundingBox.m_min;
+		ImGui::Text("MIN: %f, %f, %f", vec.x, vec.y, vec.z);
+		vec = m_worldText.m_boundingBox.m_max;
+		ImGui::Text("MAX: %f, %f, %f", vec.x, vec.y, vec.z);
+		vec = m_camera.m_ray.origin;
+		ImGui::Text("ORIGIN: %f, %f, %f", vec.x, vec.y, vec.z);
+		vec = m_camera.m_ray.direction;
+		ImGui::Text("DIRECTION: %f, %f, %f", vec.x, vec.y, vec.z);
+
+		if (m_collision)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 0, 255)); // Green color
+			ImGui::Text("YES");
+		}
+		else
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 0, 0, 255)); // Red color
+			ImGui::Text("NO");
+		}
+		ImGui::PopStyleColor();
 	}
 	ImGui::End();
 	ImGui::Render();
@@ -98,6 +131,7 @@ void Application::draw()
 }
 
 Application::Application()
+	: m_shaderManager{ShaderManager::getInstance()}
 {
 }
 
@@ -135,18 +169,22 @@ void Application::init()
 	glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
 	glEnable(GL_DEPTH_TEST);
-	// glDepthFunc(GL_LESS);
 	glfwSwapInterval(vsync);
+
 	// glEnable(GL_CULL_FACE);
 	// glCullFace(GL_BACK);
-	// glEnable(GL_BLEND);
+
 	glDisable(GL_CULL_FACE);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_TEXTURE_2D);
-	glEnable(GL_DEPTH_CLAMP);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	glEnable(GL_DEPTH_CLAMP);
+
+	GLenum error = glGetError();
+	if (error != GL_NO_ERROR) {
+		std::cerr << "Error already: " << error << std::endl;
+	}
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -172,21 +210,35 @@ void Application::init()
 	// 	SetLayeredWindowAttributes(hwnd, RGB(255, 0, 0), 128, LWA_COLORKEY);
 	// #endif
 
-	std::shared_ptr<WindowData> w{m_windowData};
-
 	m_windowData->m_view = m_camera.getViewMatrix();
 	m_windowData->m_perspective = glm::perspective(glm::radians(m_camera.m_fov), m_windowData->m_aspectRatio, m_camera.m_nearPlane, m_camera.m_farPlane);
 	m_windowData->m_orthographic = glm::ortho(0.0f, static_cast<float>(m_windowData->m_viewSize.x), static_cast<float>(m_windowData->m_viewSize.y), 0.0f, m_camera.m_nearPlane, m_camera.m_farPlane);
 
-	m_gridShader = Shader("../src/grid.vs", "../src/source.fs");
-	m_grid.init();
-	m_grid.populate();
+	// m_gridShader = Shader("../src/shaders/grid.vs", "../src/shaders/source.fs");
+	// m_grid.init();
+	// m_grid.populate();
 
-	m_fpsText.init(w, "../fonts/slkscr.ttf", 32.0f, glm::vec3{0.0f, 0.0f, 0.0f}, "../src/text.vs", "../src/text.fs", TextViewingMode::Orthographic, TextAnchor::TopLeft, TextJustification::Left);
-	m_worldText.init(w, "../fonts/Arial.ttf", 96.0f, glm::vec3{0.0f, 0.0f, 0.0f}, "../src/text.vs", "../src/text.fs", TextViewingMode::Perspective, TextAnchor::Center, TextJustification::Center);
+	{
+		auto shader{m_shaderManager.loadNewShader("Text", "../src/shaders/text.vs", "../src/shaders/text.fs")};
+		m_fpsText.setShader(shader);
+		m_worldText.setShader(shader);
+		
+		shader = m_shaderManager.loadNewShader("Object", "../src/shaders/object.vs", "../src/shaders/object.fs");
+		m_obj.setShader(shader);
+		m_crosshair.setShader(shader);
+	}
+
+	m_fpsText.initFont("../fonts/slkscr.ttf", 32.0f);
+	m_fpsText.initTextProperties(glm::vec3{0.0f, 0.0f, 0.0f}, TextViewingMode::Orthographic, TextAnchor::TopLeft, TextJustification::Left);
+	m_fpsText.init(m_windowData);
+
+	m_worldText.initFont("../fonts/Arial.ttf", 96.0f);
+	m_worldText.initTextProperties(glm::vec3{0.0f, 0.0f, 0.0f}, TextViewingMode::Perspective, TextAnchor::BottomLeft, TextJustification::Left);
+	m_worldText.init(m_windowData);
 	m_worldText.generateText("HELLO!");
 
-	m_obj.init(w);
+	m_obj.init(m_windowData);
+	m_crosshair.init(m_windowData);
 }
 
 
@@ -217,7 +269,14 @@ void Application::updateMousePos3D()
 {
 	m_mousePos = normalizePoint(lastX, lastY);
 
-	// m_mousePos3D = glm::inverse(m_model) * glm::vec4{m_mousePos, 0, 1};
+	glm::vec4 rayClip{glm::vec4{m_mousePos.x, m_mousePos.y, -1.0f, 1.0f}};
+	glm::vec4 rayEye{glm::inverse(m_windowData->m_perspective) * rayClip};
+	rayEye = glm::vec4{rayEye.x, rayEye.y, -1.0f, 0.0f};
+
+	glm::vec3 rayWorld{glm::vec3{glm::inverse(m_windowData->m_view) * rayEye}};
+	rayWorld = glm::normalize(rayWorld);
+
+	m_mousePos3D = rayWorld;
 }
 
 glm::vec2 Application::normalizePoint(double x, double y)
@@ -232,13 +291,19 @@ void Application::process_mouse_button(int button, int action, int mods)
 {
 	if (!m_ioptr->WantCaptureMouse)
 	{
-		if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+		if (button == GLFW_MOUSE_BUTTON_LEFT)
 		{
-			mouseDragging = true;
-			glfwGetCursorPos(m_window, &lastX, &lastY);
-		}
-		else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
-			mouseDragging = false;
+			if (action == GLFW_PRESS)
+			{
+				mouseFocus = true;
+				firstMouse = true;
+				glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			}
+			else if (action == GLFW_RELEASE)
+			{
+				mouseFocus = false;
+				glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			}
 		}
 	}
 }
@@ -247,16 +312,27 @@ void Application::process_cursor_position(double xposIn, double yposIn)
 {
 	if (!m_ioptr->WantCaptureMouse)
 	{
-		float xpos=static_cast<float>(xposIn);
-		float ypos=static_cast<float>(yposIn);
+		if (mouseFocus)
+		{
+			float xpos=static_cast<float>(xposIn);
+			float ypos=static_cast<float>(yposIn);
 
-		float xoffset = xpos-lastX;
-		float yoffset = ypos-lastY;
+			if (firstMouse)
+			{
+				lastX=xpos;
+				lastY=ypos;
+				firstMouse=false;
+			}
+			float xoffset = xpos-lastX;
+			float yoffset = lastY-ypos;
 
-		lastX=xpos;
-		lastY=ypos;
-		updateMousePos3D();
+			lastX=xpos;
+			lastY=ypos;
+
+			m_camera.processMouseMovement(xoffset, yoffset);
+		}
 	}
+	updateMousePos3D();
 }
 
 void Application::process_scroll(double xoffset, double yoffset)
@@ -273,23 +349,35 @@ void Application::process_scroll(double xoffset, double yoffset)
 	glm::mat4 finalScale{translateToCenter * scale * translateBack};
 
 	m_worldText.m_modelMatrix.m_scaleFactor = finalScale[0][0];
+	m_worldText.m_boundingBox.transform(m_worldText.m_modelMatrix.m_matrix);
 	m_worldText.m_modelMatrix.updateAll();
 }
 
 void Application::process_input()
 {
-	if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+	if (glfwGetKey(m_window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		// firstMouse=true;
+		m_camera.processKeyboardMovement(FORWARD, deltaTime);
 	}
-	if (glfwGetKey(m_window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	if (glfwGetKey(m_window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		
+		m_camera.processKeyboardMovement(BACKWARD, deltaTime);
 	}
-
-	if (mouseDragging)
+	if (glfwGetKey(m_window, GLFW_KEY_A) == GLFW_PRESS)
 	{
-
+		m_camera.processKeyboardMovement(LEFT, deltaTime);
+	}
+	if (glfwGetKey(m_window, GLFW_KEY_D) == GLFW_PRESS)
+	{
+		m_camera.processKeyboardMovement(RIGHT, deltaTime);
+	}
+	if (glfwGetKey(m_window, GLFW_KEY_SPACE) == GLFW_PRESS)
+	{
+		m_camera.processKeyboardMovement(UP, deltaTime);
+	}
+	if (glfwGetKey(m_window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+	{
+		m_camera.processKeyboardMovement(DOWN, deltaTime);
 	}
 }
 

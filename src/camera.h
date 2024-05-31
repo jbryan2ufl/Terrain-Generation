@@ -4,6 +4,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "ray.h"
+
 enum KeyboardMovement {
 	FORWARD,
 	BACKWARD,
@@ -30,6 +32,8 @@ public:
 
 	float m_nearPlane{0.001f};
 	float m_farPlane{1000.0f};
+
+	Ray m_ray{};
 
 	Camera();
 

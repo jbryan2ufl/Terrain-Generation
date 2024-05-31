@@ -8,6 +8,7 @@
 #include <cmath>
 #include <numbers>
 #include <memory>
+#include <iomanip>
 
 // render includes
 #include <glad/glad.h>
@@ -31,8 +32,10 @@
 #include "camera.h"
 #include "textmanager.h"
 #include "grid.h"
-#include "object.h"
+#include "exampleObject.h"
 #include "windowData.h"
+#include "shaderManager.h"
+#include "crosshair.h"
 
 // experimental optional windows no border/transparent
 // #ifdef _WIN32
@@ -44,19 +47,16 @@
 class Application
 {
 public:
-	std::shared_ptr<WindowData> m_windowData{std::make_shared<WindowData>()};
 
 	ImGuiIO* m_ioptr{};
 
 	GLFWwindow* m_window{};
 
-	Shader m_gridShader{};
-	Object m_obj{};
+	// Shader m_gridShader{};
 
-	TextManager m_fpsText{};
-	TextManager m_worldText{};
+	ShaderManager& m_shaderManager;
 
-	Grid m_grid{m_windowData->m_windowSize.x, m_windowData->m_windowSize.y, 25, 25};
+	// Grid m_grid{m_windowData->m_windowSize.x, m_windowData->m_windowSize.y, 25, 25};
 
 	bool mouseDragging{false};
 	double lastX{};
@@ -76,8 +76,16 @@ public:
 	glm::vec2 normalizePoint(double x, double y);
 	void updateMousePos3D();
 
-	float m_zoom{1.0f};
+	std::shared_ptr<WindowData> m_windowData{std::make_shared<WindowData>()};
+	TextManager m_fpsText{};
+	TextManager m_worldText{};
+	ExampleObject m_obj{};
+	Crosshair m_crosshair{};
 
+	bool firstMouse{true};
+	bool mouseFocus{false};
+
+	bool m_collision{false};
 public:
 
 	Application();

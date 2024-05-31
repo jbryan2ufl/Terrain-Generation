@@ -71,4 +71,7 @@ void Camera::updateCameraVectors() {
 	m_right = glm::normalize(glm::cross(m_front, m_worldUp));
 
 	m_up = glm::normalize(glm::cross(m_right, m_front));
+
+	m_ray.origin = m_position;
+	m_ray.direction = m_front;
 }

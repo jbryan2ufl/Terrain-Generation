@@ -9,6 +9,6 @@ uniform mat4 mvpMatrix;
 
 void main()
 {
-	color=aColor;
+	color = aColor;
 	gl_Position = mvpMatrix * aPos;
 }

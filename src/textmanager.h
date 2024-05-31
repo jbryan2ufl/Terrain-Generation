@@ -6,46 +6,45 @@
 #include "shader.h"
 #include "modelMatrix.h"
 #include "windowData.h"
+#include "renderable.h"
+#include "interactive.h"
+#include "text.h"
 
-enum class TextAnchor
-{
-	TopLeft,
-	TopCenter,
-	TopRight,
-	CenterLeft,
-	Center,
-	CenterRight,
-	BottomLeft,
-	BottomCenter,
-	BottomRight
-};
+/*
+to setup, call:
+	- constructor(WindowData)
+	- initShader(vs, fs)
+	- initFont(fontPath, fontSize)
+	- initTextProperties(position, viewMode, anchor, justification)
+	- generateText(text)
+	- init()
 
-enum class TextJustification
-{
-	Left,
-	Center,
-	Right
-};
+in the future, TextManager will spawn a Text object which will be rendered
+fonts will be loaded on init from fonts/ directory
 
-enum class TextViewingMode
-{
-	Orthographic,
-	Perspective
-};
+should be
+	- constructor(WindowData)
+	- init() -> initFonts()
+	- Text generateText(text)
+*/
 
-class TextManager
+class TextManager : public Renderable, public Interactive
 {
 public:
 	TextManager();
-
-	void init(std::shared_ptr<WindowData> w, const char* fontPath, float fontSize, glm::vec3 position, const char* vs, const char* fs, TextViewingMode v, TextAnchor a, TextJustification j);
-
 	~TextManager();
 
-	void generateText(std::string text);
-	void render();
+	void init(std::shared_ptr<WindowData> w) override;
+	void renderSpecifics() override;
+	void setUniforms() override;
+	void populateVAO() override;
+	void initGeometry() override;
 
-	void loadFont(const char* fontPath);
+	void initFont(const char* fontPath, float fontSize);
+	void initTextProperties(glm::vec3 position, TextViewingMode v, TextAnchor a, TextJustification j);
+
+	void generateText(std::string text);
+
 	ModelMatrix m_modelMatrix{};
 
 	void setJustification(TextJustification j);
@@ -53,21 +52,16 @@ public:
 
 private:
 
+	std::vector<Text> m_textObjects{};
+
+	void loadFont(const char* fontPath);
 	std::shared_ptr<WindowData> m_windowData{};
 
 	std::string m_text{};
 
 	TextViewingMode m_viewMode{TextViewingMode::Orthographic};
 
-	struct TextMetrics
-	{
-		float maxCharHeight{};
-		float fullTextHeight{};
-		float fullTextWidth{};
-	};
-
 	void createTextureAtlas();
-	void setupBuffers();
 
 	GLuint textureAtlas;
 	int atlasWidth = 512, atlasHeight = 512;
@@ -77,11 +71,8 @@ private:
 	unsigned char* fontBuffer;
 
 	unsigned int m_fontTexture{};
-	unsigned int m_VAO{};
-	unsigned int m_VBO{};
 
 	TextMetrics m_textMetrics{};
-	Shader m_shader{};
 
 	TextAnchor m_anchor{TextAnchor::Center};
 	TextJustification m_justification{TextJustification::Center};

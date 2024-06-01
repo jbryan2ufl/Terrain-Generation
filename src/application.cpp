@@ -148,8 +148,7 @@ void Application::init()
 	if (m_window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
-		glfwTerminate();
-		exit(1);
+		close();
 	}
 
 	glfwMakeContextCurrent(m_window);
@@ -163,7 +162,7 @@ void Application::init()
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cout << "Failed to initialize Glad" << std::endl;
-		exit(EXIT_FAILURE);
+		close();
 	}
 
 	glfwSetInputMode(m_window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);

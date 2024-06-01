@@ -14,5 +14,5 @@ void Interactive::setBoundingBox(const glm::vec3 min, const glm::vec3 max)
 bool Interactive::checkIntersection(const Ray& ray)
 {
 	m_boundingBox.transform(m_modelMatrix.m_matrix);
-	return m_boundingBox.intersects(ray);
+	return m_boundingBox.intersect(ray);
 }

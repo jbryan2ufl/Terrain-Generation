@@ -5,7 +5,7 @@
 
 struct WindowData
 {
-	glm::vec2 m_windowSize{1280, 720};
+	glm::vec2 m_windowSize{1920, 1080};
 
 	float m_viewRatio{m_windowSize.y/m_windowSize.x};
 

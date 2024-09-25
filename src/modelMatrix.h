@@ -22,7 +22,7 @@ struct ModelMatrix
 	float m_angle{};
 	glm::vec3 m_axis{0.0f, 0.0f, 1.0f};
 	float m_scaleFactor{1.0f};
-	glm::vec3 m_position{};
+	glm::vec3 m_position{0.0f};
 };
 
 #endif

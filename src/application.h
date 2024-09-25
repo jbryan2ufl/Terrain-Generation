@@ -36,6 +36,8 @@
 #include "windowData.h"
 #include "shaderManager.h"
 #include "crosshair.h"
+#include "SimpleTerrain.h"
+#include "light.h"
 
 // experimental optional windows no border/transparent
 // #ifdef _WIN32
@@ -76,11 +78,13 @@ public:
 	glm::vec2 normalizePoint(double x, double y);
 	void updateMousePos3D();
 
+	Light m_light{};
 	std::shared_ptr<WindowData> m_windowData{std::make_shared<WindowData>()};
 	TextManager m_fpsText{};
 	TextManager m_worldText{};
 	ExampleObject m_obj{};
 	Crosshair m_crosshair{};
+	SimpleTerrain m_SimpleTerrain{m_light, m_camera};
 
 	bool firstMouse{true};
 	bool mouseFocus{false};
@@ -112,6 +116,8 @@ public:
 	double totalTime{};
 	double frameTime{};
 	double startTime{};
+	double lastVTime{};
+	float Vspeed{0.01f};
 
 	void updateFrameTime();
 };

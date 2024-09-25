@@ -14,11 +14,10 @@ public:
 	unsigned int vertex{};
 	unsigned int fragment{};
 	unsigned int geometry{};
+	unsigned int compute{};
 
-	Shader(){};
-	Shader(const char* vertexPath, const char* fragmentPath);
-	Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath);
-	void setupShader(const char* shaderPath, unsigned int& shaderID, GLenum shaderType);
+	Shader();
+	void setupShader(const char* shaderPath, GLenum shaderType);
 	void use();
 	void checkCompileErrors(unsigned int, std::string);
 	void setMat4(const std::string &name, const glm::mat4 &mat) const;

@@ -45,15 +45,20 @@ void Application::draw()
 
 	std::string mousePosString{"X:"+std::to_string(m_mousePos.x)+" Y:"+std::to_string(m_mousePos.y)};
 
+	m_SimpleTerrain.terrainV+=1;
+	m_SimpleTerrain.regenerate();
+	
 	
 	// OBJECT RENDERING
-	m_obj.render();
+	// m_obj.render();
 	m_crosshair.render();
+
+	m_SimpleTerrain.render();
 
 	m_collision = m_worldText.checkIntersection(m_camera.m_ray);
 
 	// TEXT RENDERING
-	m_worldText.render();
+	// m_worldText.render();
 
 	m_fpsText.generateText(frameTimeString+fpsString+mousePosString);
 	m_fpsText.render();
@@ -66,28 +71,56 @@ void Application::draw()
 	glfwGetWindowSize(m_window, &width, &height);
 	ImGui::SetNextWindowPos(ImVec2{width*m_windowData->m_viewRatio,0});
 	ImGui::SetNextWindowSize(ImVec2{width*(1-m_windowData->m_viewRatio),height});
+	
 	if (ImGui::Begin("Settings", 0, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoDecoration))
 	{
+		ImGui::DragFloat("Y Scale", &m_SimpleTerrain.m_yscale, 0.5f);
+		ImGui::DragFloat("Noise Density", &m_SimpleTerrain.m_noiseDensity, 0.1f);
+		ImGui::DragInt("Noise Wrap Power", &m_SimpleTerrain.m_noiseWrapPower, 0.5f, 0);
+		ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(m_SimpleTerrain.perlinTexture)), ImVec2{512, 512});
+		ImGui::DragFloat("Terrain V", &Vspeed, 0.0001f, 0.0f);
+		ImGui::DragInt("Terrain V", &m_SimpleTerrain.terrainV, 0.5f);
+		ImGui::DragFloat("Terrain Lacunarity", &m_SimpleTerrain.terrainLacunarity, 0.001f);
+		ImGui::DragFloat("Terrain Gain", &m_SimpleTerrain.terrainGain, 0.001f);
+		ImGui::DragFloat("Terrain Offset", &m_SimpleTerrain.terrainOffset, 0.001f);
+		ImGui::DragInt("Terrain Octaves", &m_SimpleTerrain.terrainOctaves, 0.11f, 0);
+
+		ImGui::Checkbox("Ridge Noise", &m_SimpleTerrain.v1);
+		ImGui::Checkbox("Perlin Noise", &m_SimpleTerrain.v2);
+
+		ImGui::SliderFloat3("Material", &m_SimpleTerrain.m_material.materialValues[0], 0.0f, 1.0f);
+		// ImGui::SameLine();
+		ImGui::DragFloat("Shininess", &m_SimpleTerrain.m_material.materialValues[3], 1.0f, 0.0f);
+
+		if (ImGui::Button("Regen Terrain"))
+		{
+			m_SimpleTerrain.regenerate();
+		}
+
+		ImGui::DragFloat3("Light Position", &m_light.lightPos[0], 0.1f);
+
 		if (ImGui::Checkbox("VSync", &vsync))
 		{
 			glfwSwapInterval(vsync);
 		}
-		if (ImGui::DragFloat3("Text Position", &m_worldText.m_modelMatrix.m_position[0], 1.0f/10));
-		{
-			m_worldText.m_modelMatrix.updateAll();
-		}
-		if (ImGui::DragFloat3("Text Rotation Axis", &m_worldText.m_modelMatrix.m_axis[0], 1.0f/360));
-		{
-			m_worldText.m_modelMatrix.updateAll();
-		}
-		if (ImGui::DragFloat("Text Rotation Angle", &m_worldText.m_modelMatrix.m_angle, 1.0f/360))
-		{
-			m_worldText.m_modelMatrix.updateAll();
-		}
-		if (ImGui::DragFloat("Text Scale", &m_worldText.m_modelMatrix.m_scaleFactor, 1.0f/360))
-		{
-			m_worldText.m_modelMatrix.updateAll();
-		}
+
+
+		// if (ImGui::DragFloat3("Text Position", &m_worldText.m_modelMatrix.m_position[0], 1.0f/10));
+		// {
+		// 	m_worldText.m_modelMatrix.updateAll();
+		// }
+		// if (ImGui::DragFloat3("Text Rotation Axis", &m_worldText.m_modelMatrix.m_axis[0], 1.0f/360));
+		// {
+		// 	m_worldText.m_modelMatrix.updateAll();
+		// }
+		// if (ImGui::DragFloat("Text Rotation Angle", &m_worldText.m_modelMatrix.m_angle, 1.0f/360))
+		// {
+		// 	m_worldText.m_modelMatrix.updateAll();
+		// }
+		// if (ImGui::DragFloat("Text Scale", &m_worldText.m_modelMatrix.m_scaleFactor, 1.0f/360))
+		// {
+		// 	m_worldText.m_modelMatrix.updateAll();
+		// }
 
 		
 		bool m_nearPlane{ImGui::DragFloat("Near Plane", &m_camera.m_nearPlane, 0.0001f)};
@@ -137,11 +170,13 @@ Application::Application()
 
 void Application::init()
 {
+	std::srand(static_cast<unsigned>(std::time(nullptr)));
+
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	// glfwWindowHint(GLFW_SAMPLES, 8);
+	glfwWindowHint(GLFW_SAMPLES, 8);
 
 	m_window = glfwCreateWindow(m_windowData->m_windowSize.x, m_windowData->m_windowSize.y, "3D Template", NULL, NULL);
 
@@ -171,9 +206,10 @@ void Application::init()
 	glfwSwapInterval(vsync);
 
 	// glEnable(GL_CULL_FACE);
-	// glCullFace(GL_BACK);
+	// glCullFace(GL_FRONT);
+	// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	glDisable(GL_CULL_FACE);
+	// glDisable(GL_CULL_FACE);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -218,13 +254,16 @@ void Application::init()
 	// m_grid.populate();
 
 	{
-		auto shader{m_shaderManager.loadNewShader("Text", "../src/shaders/text.vs", "../src/shaders/text.fs")};
+		auto shader{m_shaderManager.loadNewShader("Text", "../src/shaders/text.vs", GL_VERTEX_SHADER, "../src/shaders/text.fs", GL_FRAGMENT_SHADER)};
 		m_fpsText.setShader(shader);
 		m_worldText.setShader(shader);
 		
-		shader = m_shaderManager.loadNewShader("Object", "../src/shaders/object.vs", "../src/shaders/object.fs");
+		shader = m_shaderManager.loadNewShader("Object", "../src/shaders/object.vs", GL_VERTEX_SHADER, "../src/shaders/object.fs", GL_FRAGMENT_SHADER);
 		m_obj.setShader(shader);
 		m_crosshair.setShader(shader);
+
+		shader = m_shaderManager.loadNewShader("Object Normal", "../src/shaders/objectnormal.vs", GL_VERTEX_SHADER, "../src/shaders/objectnormal.fs", GL_FRAGMENT_SHADER);
+		m_SimpleTerrain.setShader(shader);
 	}
 
 	m_fpsText.initFont("../fonts/slkscr.ttf", 32.0f);
@@ -238,6 +277,7 @@ void Application::init()
 
 	m_obj.init(m_windowData);
 	m_crosshair.init(m_windowData);
+	m_SimpleTerrain.init(m_windowData);
 }
 
 
@@ -338,7 +378,6 @@ void Application::process_scroll(double xoffset, double yoffset)
 {
 	yoffset > 0 ? m_worldText.m_modelMatrix.m_scaleFactor *= 1.1f : m_worldText.m_modelMatrix.m_scaleFactor /= 1.1f;
 
-	// updateMousePos3D();
 	glm::mat4 translateToCenter = glm::translate(glm::mat4{1.0f}, glm::vec3{m_mousePos, 0.0f});
 
 	glm::mat4 scale = glm::scale(glm::mat4{1.0}, glm::vec3{m_worldText.m_modelMatrix.m_scaleFactor});

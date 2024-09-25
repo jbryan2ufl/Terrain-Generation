@@ -7,7 +7,7 @@ Crosshair::Crosshair()
 void Crosshair::init(std::shared_ptr<WindowData> w)
 {
 	m_windowData = w;
-	setupBuffers(2);
+	setupBuffers(1);
 	initGeometry();
 	populateVAO();
 }

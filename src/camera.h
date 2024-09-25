@@ -26,7 +26,7 @@ public:
 
 	float m_yaw{-90.0f};
 	float m_pitch{0.0f};
-	float m_movementSpeed{2.5f};
+	float m_movementSpeed{100.0f};
 	float m_mouseSensitivity{0.1f};
 	float m_fov{60.0f};
 

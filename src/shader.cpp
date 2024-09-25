@@ -1,21 +1,11 @@
 #include "shader.h"
 
-Shader::Shader(const char* vertexPath, const char* fragmentPath)
+Shader::Shader()
 {
 	ID=glCreateProgram();
-	setupShader(vertexPath, vertex, GL_VERTEX_SHADER);
-	setupShader(fragmentPath, fragment, GL_FRAGMENT_SHADER);
 }
 
-Shader::Shader(const char* vertexPath, const char* fragmentPath, const char* geometryPath)
-{
-	ID=glCreateProgram();
-	setupShader(vertexPath, vertex, GL_VERTEX_SHADER);
-	setupShader(fragmentPath, fragment, GL_FRAGMENT_SHADER);
-	setupShader(geometryPath, geometry, GL_GEOMETRY_SHADER);
-}
-
-void Shader::setupShader(const char* shaderPath, unsigned int& shaderID, GLenum shaderType)
+void Shader::setupShader(const char* shaderPath, GLenum shaderType)
 {
 	std::string shaderCodeString;
 	std::ifstream shaderFile;
@@ -33,10 +23,31 @@ void Shader::setupShader(const char* shaderPath, unsigned int& shaderID, GLenum 
 		return;
 	}
 
-	if (shaderID != 0) {
-		glDeleteShader(shaderID);
+	unsigned int shaderID{};
+
+	switch (shaderType)
+	{
+		case GL_VERTEX_SHADER:
+			shaderID = vertex;
+			break;
+		case GL_FRAGMENT_SHADER:
+			shaderID = fragment;
+			break;
+		case GL_GEOMETRY_SHADER:
+			shaderID = geometry;
+			break;
+		case GL_COMPUTE_SHADER:
+			shaderID = compute;
+			break;
+		default:
+			break;
 	}
 
+	if (shaderID != 0)
+	{
+		glDeleteShader(shaderID);
+	}
+	
 	const char* shaderCode{shaderCodeString.c_str()};
 
 	glDetachShader(ID, shaderID);

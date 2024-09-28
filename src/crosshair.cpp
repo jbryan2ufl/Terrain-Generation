@@ -20,7 +20,7 @@ void Crosshair::renderSpecifics()
 void Crosshair::setUniforms()
 {
 	glm::mat4 mvpMatrix {m_windowData->m_orthographic * glm::mat4{1.0f} * m_modelMatrix.m_matrix};
-	m_shader->setMat4("mvpMatrix", mvpMatrix);
+	m_shader->setUniform("mvpMatrix", mvpMatrix);
 }
 
 void Crosshair::populateVAO()

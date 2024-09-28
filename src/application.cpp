@@ -45,7 +45,7 @@ void Application::draw()
 
 	std::string mousePosString{"X:"+std::to_string(m_mousePos.x)+" Y:"+std::to_string(m_mousePos.y)};
 
-	m_SimpleTerrain.terrainV+=1;
+	// m_SimpleTerrain.terrainV+=1;
 	m_SimpleTerrain.regenerate();
 	
 	
@@ -63,6 +63,7 @@ void Application::draw()
 	m_fpsText.generateText(frameTimeString+fpsString+mousePosString);
 	m_fpsText.render();
 
+{
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
@@ -78,8 +79,8 @@ void Application::draw()
 		ImGui::DragFloat("Noise Density", &m_SimpleTerrain.m_noiseDensity, 0.1f);
 		ImGui::DragInt("Noise Wrap Power", &m_SimpleTerrain.m_noiseWrapPower, 0.5f, 0);
 		ImGui::Image(reinterpret_cast<void*>(static_cast<intptr_t>(m_SimpleTerrain.perlinTexture)), ImVec2{512, 512});
-		ImGui::DragFloat("Terrain V", &Vspeed, 0.0001f, 0.0f);
-		ImGui::DragInt("Terrain V", &m_SimpleTerrain.terrainV, 0.5f);
+		ImGui::DragFloat("Speed", &Vspeed, 0.0001f, 0.0f);
+		ImGui::DragInt("Terrain V", &m_SimpleTerrain.terrainV, 0.5f, 0);
 		ImGui::DragFloat("Terrain Lacunarity", &m_SimpleTerrain.terrainLacunarity, 0.001f);
 		ImGui::DragFloat("Terrain Gain", &m_SimpleTerrain.terrainGain, 0.001f);
 		ImGui::DragFloat("Terrain Offset", &m_SimpleTerrain.terrainOffset, 0.001f);
@@ -143,6 +144,9 @@ void Application::draw()
 		ImGui::Text("ORIGIN: %f, %f, %f", vec.x, vec.y, vec.z);
 		vec = m_camera.m_ray.direction;
 		ImGui::Text("DIRECTION: %f, %f, %f", vec.x, vec.y, vec.z);
+		vec = glm::vec3{m_camera.m_yaw, m_camera.m_pitch, m_camera.m_fov};
+		ImGui::Text("YAW: %f, PITCH: %f, FOV: %f", vec.x, vec.y, vec.z);
+
 
 		if (m_collision)
 		{
@@ -160,6 +164,7 @@ void Application::draw()
 	ImGui::Render();
 
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
 	glfwSwapBuffers(m_window);
 }
 

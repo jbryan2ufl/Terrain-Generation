@@ -40,6 +40,7 @@ protected:
 
 	virtual void renderSpecifics() = 0;
 
+
 	unsigned int m_VAO{};
 	std::vector<unsigned int> m_VBOs{};
 

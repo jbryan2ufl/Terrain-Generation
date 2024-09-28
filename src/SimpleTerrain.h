@@ -31,7 +31,6 @@ public:
 	void populateVAO() override;
 	void initGeometry() override;
 
-
 	void calculateNormals();
 	void generateVertices();
 

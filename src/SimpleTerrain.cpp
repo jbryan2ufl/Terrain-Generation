@@ -19,7 +19,8 @@ SimpleTerrain::SimpleTerrain(Light& l, Camera& c)
                 float ny = static_cast<float>(y) / m_height;
                 float nz = static_cast<float>(z) / m_depth;
 
-                float noiseValue = stb_perlin_noise3(nx * m_noiseDensity, ny * m_noiseDensity, nz * m_noiseDensity, 0, std::pow(2, m_noiseWrapPower), 0);
+                float noiseValue = stb_perlin_noise3(nx * m_noiseDensity, ny * m_noiseDensity, nz * m_noiseDensity, 0, 0, 0);
+                // float noiseValue = stb_perlin_noise3(nx * m_noiseDensity, ny * m_noiseDensity, nz * m_noiseDensity, 0, std::pow(2, m_noiseWrapPower), 0);
 
                 rawNoiseData.push_back(noiseValue);
             }
@@ -30,9 +31,9 @@ SimpleTerrain::SimpleTerrain(Light& l, Camera& c)
 void SimpleTerrain::init(std::shared_ptr<WindowData> w)
 {
     m_windowData = w;
-	setupBuffers(1);
-	initGeometry();
-	populateVAO();
+    setupBuffers(1);
+    initGeometry();
+    populateVAO();
 }
 
 void SimpleTerrain::renderSpecifics()
@@ -43,24 +44,24 @@ void SimpleTerrain::renderSpecifics()
 void SimpleTerrain::setUniforms()
 {
     m_modelMatrix.updateAll();
-    m_shader->setMat4("model", m_modelMatrix.m_matrix);
-    m_shader->setMat4("view", m_windowData->m_view);
-    m_shader->setMat4("projection", m_windowData->m_perspective);
+    m_shader->setUniform("model", m_modelMatrix.m_matrix);
+    m_shader->setUniform("view", m_windowData->m_view);
+    m_shader->setUniform("projection", m_windowData->m_perspective);
 
-    m_shader->setVec4("materialValues", m_material.materialValues);
-    m_shader->setVec3("objectColor", m_material.color);
-    m_shader->setVec3("lightPos", m_light.lightPos);
-    m_shader->setVec3("lightColor", m_light.lightColor);
-    m_shader->setVec3("viewPos", m_camera.m_position);
+    m_shader->setUniform("materialValues", m_material.materialValues);
+    m_shader->setUniform("objectColor", m_material.color);
+    m_shader->setUniform("lightPos", m_light.lightPos);
+    m_shader->setUniform("lightColor", m_light.lightColor);
+    m_shader->setUniform("viewPos", m_camera.m_position);
     
-    m_shader->setFloat("constant", 1.0);
-    m_shader->setFloat("linear", 0.005);
-    m_shader->setFloat("quadratic", 0.0001);
+    m_shader->setUniform("constant", 1.0f);
+    m_shader->setUniform("linear", 0.005f);
+    m_shader->setUniform("quadratic", 0.0001f);
 }
 
 void SimpleTerrain::populateVAO()
 {
-   glBindVertexArray(m_VAO);
+glBindVertexArray(m_VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, m_VBOs[0]);
     glBufferData(GL_ARRAY_BUFFER, m_trivertices.size() * sizeof(Vertex), &m_trivertices[0], GL_STATIC_DRAW);
@@ -111,7 +112,7 @@ void SimpleTerrain::regenerate()
     terrainV %= 128;
     
     m_modelMatrix.m_position = glm::vec3{0.0f};
-	m_modelMatrix.updateAll();
+    m_modelMatrix.updateAll();
 
     m_trivertices.clear();
     m_vertices.clear();
@@ -126,6 +127,7 @@ void SimpleTerrain::regenerate()
             float nz = static_cast<float>(z) / m_height;
 
             float value = rawNoiseData[x + m_width * (terrainV + m_height * z)];
+            // float value = 1;
             // if (v1) value *= stb_perlin_ridge_noise3(nx, terrainV, nz, terrainLacunarity, terrainGain, terrainOffset, terrainOctaves);
             // if (v1) value *= 1.0f;
             
@@ -163,7 +165,7 @@ void SimpleTerrain::regenerate()
     // Generate triangle vertices from indices
     generateVertices();
     float timeAfter{glfwGetTime()};
-    std::cout << "TIME TAKEN: " << timeAfter - timeBefore << '\n';
+    // std::cout << "TIME TAKEN: " << timeAfter - timeBefore << '\n';
 
     glBindTexture(GL_TEXTURE_2D, perlinTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_width, m_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, noiseData.data());

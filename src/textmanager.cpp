@@ -317,7 +317,7 @@ void TextManager::setUniforms()
 	{
 		mvpMatrix = m_windowData->m_perspective * m_windowData->m_view * m_modelMatrix.m_matrix;
 	}
-	m_shader->setMat4("mvpMatrix", mvpMatrix);
+	m_shader->setUniform("mvpMatrix", mvpMatrix);
 }
 
 void TextManager::renderSpecifics()

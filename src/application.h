@@ -38,6 +38,7 @@
 #include "crosshair.h"
 #include "SimpleTerrain.h"
 #include "light.h"
+#include "framebuffer.h"
 
 // experimental optional windows no border/transparent
 // #ifdef _WIN32
@@ -57,6 +58,8 @@ public:
 	// Shader m_gridShader{};
 
 	ShaderManager& m_shaderManager;
+
+	FrameBuffer m_framebuffer{};
 
 	// Grid m_grid{m_windowData->m_windowSize.x, m_windowData->m_windowSize.y, 25, 25};
 
@@ -90,6 +93,7 @@ public:
 	bool mouseFocus{false};
 
 	bool m_collision{false};
+	
 public:
 
 	Application();

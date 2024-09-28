@@ -7,6 +7,7 @@
 #include <iostream>
 
 #include "shader.h"
+#include "windowData.h"
 
 class ShaderManager
 {
@@ -32,6 +33,7 @@ public:
 private:
 	ShaderManager()
 	{}
+	
 
 	std::unordered_map<std::string, std::shared_ptr<Shader>> m_shaders{};
 };
@@ -39,14 +41,12 @@ private:
 template<typename... Args>
 std::shared_ptr<Shader> ShaderManager::loadNewShader(const std::string& s, Args... args)
 {
-	// Check if shader already exists
 	if (m_shaders.find(s) != m_shaders.end()) {
 		return m_shaders[s];
 	}
 
 	auto shader = std::make_shared<Shader>();
 
-	// Call the helper function to compile and attach shaders
 	compileShaders(*shader, args...);
 
 	m_shaders[s] = shader;
